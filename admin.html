@@ -13,28 +13,28 @@ body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-ser
           justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 .header h1 { margin: 0; font-size: 20px; font-weight: 600; }
 .user-info { font-size: 14px; opacity: 0.9; }
-
+ 
 .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
 .login-box { max-width: 400px; margin: 80px auto; background: white; padding: 32px;
              border-radius: 12px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .login-box h2 { margin-top: 0; }
 #g_id_signin { display: flex; justify-content: center; margin-top: 20px; }
 .g_id_signin { display: flex; justify-content: center; margin-top: 20px; }
-
+ 
 .tabs { display: flex; gap: 4px; border-bottom: 2px solid #e5e7eb; margin-bottom: 20px;
         overflow-x: auto; }
 .tab { padding: 10px 18px; cursor: pointer; border: none; background: none;
        font-size: 15px; font-weight: 500; color: #6b7280; white-space: nowrap;
        font-family: inherit; border-bottom: 2px solid transparent; margin-bottom: -2px; }
 .tab.active { color: #2563eb; border-bottom-color: #2563eb; }
-
+ 
 .panel { display: none; }
 .panel.active { display: block; }
-
+ 
 .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 16px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 .card h3 { margin-top: 0; font-size: 16px; }
-
+ 
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
 .field { flex: 1; min-width: 140px; }
 .field label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
@@ -48,31 +48,31 @@ button:hover { background: #1d4ed8; }
 button.secondary { background: #6b7280; }
 button.danger { background: #dc2626; }
 button.success { background: #16a34a; }
-
+ 
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #e5e7eb; }
 th { background: #f9fafb; font-weight: 600; color: #374151; font-size: 13px; }
 tr:hover td { background: #fafafa; }
 .action-btn { padding: 4px 10px; font-size: 12px; }
-
+ 
 .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 12px; margin-bottom: 20px; }
 .stat { background: white; padding: 16px; border-radius: 8px; text-align: center; }
 .stat .num { font-size: 26px; font-weight: 700; color: #2563eb; }
 .stat .label { font-size: 12px; color: #6b7280; margin-top: 4px; }
-
+ 
 .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px;
          background: #dbeafe; color: #1e40af; }
 .badge.green { background: #dcfce7; color: #166534; }
 .badge.gray { background: #f3f4f6; color: #6b7280; }
-
+ 
 .empty { text-align: center; padding: 40px; color: #999; }
 .photo-link { color: #2563eb; text-decoration: none; font-size: 12px; }
 .photo-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
-
+ 
 <div id="login-screen" class="login-box">
   <h2>外牆翻修打卡後台</h2>
   <p style="color:#666">請使用授權的 Google 帳號登入</p>
@@ -88,7 +88,7 @@ tr:hover td { background: #fafafa; }
        data-shape="rectangular"
        data-logo_alignment="left"></div>
 </div>
-
+ 
 <div id="main-screen" style="display:none">
   <div class="header">
     <h1>外牆翻修打卡 - 管理後台</h1>
@@ -97,14 +97,15 @@ tr:hover td { background: #fafafa; }
       <button class="secondary" style="margin-left:10px" onclick="logout()">登出</button>
     </div>
   </div>
-
+ 
   <div class="container">
     <div class="tabs">
       <button class="tab active" onclick="switchTab('report')">報表/工程進度</button>
+      <button class="tab" onclick="switchTab('employees')">員工管理</button>
       <button class="tab" onclick="switchTab('sites')">案場管理</button>
       <button class="tab" onclick="switchTab('procedures')">工序管理</button>
     </div>
-
+ 
     <!-- 報表 -->
     <div class="panel active" id="panel-report">
       <div class="card">
@@ -128,9 +129,9 @@ tr:hover td { background: #fafafa; }
           </div>
         </div>
       </div>
-
+ 
       <div class="stat-row" id="stats"></div>
-
+ 
       <div class="card">
         <h3>💰 薪資彙總 (日薪制)</h3>
         <table id="salary-table">
@@ -138,7 +139,7 @@ tr:hover td { background: #fafafa; }
           <tbody></tbody>
         </table>
       </div>
-
+ 
       <div class="card">
         <h3>📅 每日工程進度</h3>
         <table id="progress-table">
@@ -146,7 +147,7 @@ tr:hover td { background: #fafafa; }
           <tbody></tbody>
         </table>
       </div>
-
+ 
       <div class="card">
         <h3>📋 打卡明細</h3>
         <div style="overflow-x:auto">
@@ -161,7 +162,31 @@ tr:hover td { background: #fafafa; }
         </div>
       </div>
     </div>
-
+ 
+    <!-- 員工管理 -->
+    <div class="panel" id="panel-employees">
+      <div class="card">
+        <h3>新增員工</h3>
+        <div class="row">
+          <div class="field"><label>員工ID *</label><input id="new-emp-id" placeholder="如：W01、W02"></div>
+          <div class="field"><label>姓名 *</label><input id="new-emp-name" placeholder="王大明"></div>
+          <div class="field"><label>日薪 *</label><input type="number" id="new-emp-wage" placeholder="2500"></div>
+          <div class="field"><label>手機</label><input id="new-emp-phone" placeholder="09xxxxxxxx"></div>
+          <div><button class="success" onclick="addEmployee()">新增</button></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:8px">
+          💡 員工ID 是內部識別碼，建議用 W01、W02 這種短碼，新增後無法修改。
+        </div>
+      </div>
+      <div class="card">
+        <h3>現有員工</h3>
+        <table id="employees-table">
+          <thead><tr><th>員工ID</th><th>姓名</th><th>日薪</th><th>手機</th><th>啟用</th><th>操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+ 
     <!-- 案場管理 -->
     <div class="panel" id="panel-sites">
       <div class="card">
@@ -182,7 +207,7 @@ tr:hover td { background: #fafafa; }
         </table>
       </div>
     </div>
-
+ 
     <!-- 工序管理 -->
     <div class="panel" id="panel-procedures">
       <div class="card">
@@ -203,34 +228,47 @@ tr:hover td { background: #fafafa; }
     </div>
   </div>
 </div>
-
+ 
 <script>
 // ===== 設定 =====
 const API_URL = 'https://script.google.com/macros/s/AKfycbySGybq9MaGuUi5SSoNPidkrutr98Iuj8Fu_KGSxM3Igsh2dvqMh2iUASD3Fkjerk-qyQ/exec';
 let currentUser = null;
 let currentData = null;
-
+ 
 // ===== Google 登入 =====
 function handleCredentialResponse(response) {
-  // 解析 JWT 取得 email
-  const payload = JSON.parse(atob(response.credential.split('.')[1]));
-  currentUser = { email: payload.email, name: payload.name };
-  document.getElementById('user-email').textContent = currentUser.email;
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('main-screen').style.display = 'block';
-  loadAdminData();
-  // 預設本月
-  const now = new Date();
-  document.getElementById('filter-month').value =
-    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  loadReport();
+  try {
+    // 正確解析 JWT：base64url → base64 → UTF-8（支援中文姓名）
+    const base64Url = response.credential.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+    const decoded = atob(padded);
+    const utf8 = decodeURIComponent(decoded.split('').map(c =>
+      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    ).join(''));
+    const payload = JSON.parse(utf8);
+ 
+    currentUser = { email: payload.email, name: payload.name };
+    document.getElementById('user-email').textContent = currentUser.email;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-screen').style.display = 'block';
+    loadAdminData();
+    // 預設本月
+    const now = new Date();
+    document.getElementById('filter-month').value =
+      `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    loadReport();
+  } catch (err) {
+    alert('登入解析失敗: ' + err.message);
+    console.error('JWT decode error', err);
+  }
 }
-
+ 
 function logout() {
   currentUser = null;
   location.reload();
 }
-
+ 
 // ===== 切換頁籤 =====
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -238,7 +276,7 @@ function switchTab(name) {
   event.target.classList.add('active');
   document.getElementById('panel-' + name).classList.add('active');
 }
-
+ 
 // ===== 載入後台資料 =====
 async function loadAdminData() {
   try {
@@ -246,7 +284,7 @@ async function loadAdminData() {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
     currentData = data;
-
+ 
     // 填入篩選下拉
     const siteSel = document.getElementById('filter-site');
     const empSel = document.getElementById('filter-employee');
@@ -255,17 +293,72 @@ async function loadAdminData() {
     data.sites.forEach(s => {
       siteSel.innerHTML += `<option value="${s['案場名稱']}">${s['案場名稱']}</option>`;
     });
-    data.employees.forEach(e => {
-      empSel.innerHTML += `<option value="${e.name}">${e.name}</option>`;
+    data.employees.filter(e => e['啟用'] === '是').forEach(e => {
+      empSel.innerHTML += `<option value="${e['姓名']}">${e['姓名']}</option>`;
     });
-
+ 
+    renderEmployees();
     renderSites();
     renderProcedures();
   } catch (err) {
     alert('載入失敗: ' + err.message);
   }
 }
-
+ 
+// ===== 員工管理 =====
+function renderEmployees() {
+  const tbody = document.querySelector('#employees-table tbody');
+  tbody.innerHTML = currentData.employees.map(e => `
+    <tr>
+      <td><code>${e['員工ID']}</code></td>
+      <td>${e['姓名']}</td>
+      <td>${Number(e['日薪']).toLocaleString()}</td>
+      <td>${e['手機'] || '-'}</td>
+      <td><span class="badge ${e['啟用']==='是'?'green':'gray'}">${e['啟用']}</span></td>
+      <td>
+        <button class="action-btn ${e['啟用']==='是'?'secondary':'success'}"
+                onclick="toggleEmployee('${e['員工ID']}', '${e['姓名']}', '${e['日薪']}', '${e['手機']||''}', '${e['啟用']}')">
+          ${e['啟用']==='是'?'停用':'啟用'}
+        </button>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" class="empty">尚無員工</td></tr>';
+}
+ 
+async function addEmployee() {
+  const id = document.getElementById('new-emp-id').value.trim();
+  const name = document.getElementById('new-emp-name').value.trim();
+  const wage = document.getElementById('new-emp-wage').value;
+  const phone = document.getElementById('new-emp-phone').value.trim();
+  if (!id) return alert('請輸入員工ID');
+  if (!name) return alert('請輸入姓名');
+  if (!wage) return alert('請輸入日薪');
+  const res = await postAction({
+    action: 'updateEmployees', mode: 'add',
+    email: currentUser.email,
+    id, name, dailyWage: wage, phone
+  });
+  if (res.ok) {
+    document.getElementById('new-emp-id').value = '';
+    document.getElementById('new-emp-name').value = '';
+    document.getElementById('new-emp-wage').value = '';
+    document.getElementById('new-emp-phone').value = '';
+    loadAdminData();
+  }
+}
+ 
+async function toggleEmployee(id, name, wage, phone, currentEnabled) {
+  const newEnabled = currentEnabled !== '是';
+  const action = newEnabled ? '啟用' : '停用';
+  if (!confirm(`確定要將「${name}」改為${action}？\n（停用後，工人打卡頁面下拉會看不到此人，但歷史記錄保留）`)) return;
+  const res = await postAction({
+    action: 'updateEmployees', mode: 'update',
+    email: currentUser.email,
+    id, name, dailyWage: wage, phone, enabled: newEnabled
+  });
+  if (res.ok) loadAdminData();
+}
+ 
 // ===== 案場管理 =====
 function renderSites() {
   const tbody = document.querySelector('#sites-table tbody');
@@ -285,7 +378,7 @@ function renderSites() {
     </tr>
   `).join('') || '<tr><td colspan="6" class="empty">尚無案場</td></tr>';
 }
-
+ 
 async function addSite() {
   const name = document.getElementById('new-site-name').value.trim();
   if (!name) return alert('請輸入案場名稱');
@@ -304,7 +397,7 @@ async function addSite() {
     loadAdminData();
   }
 }
-
+ 
 async function toggleSiteStatus(id, name, currentStatus) {
   const newStatus = currentStatus === '進行中' ? '已結案' : '進行中';
   if (!confirm(`確定要將「${name}」改為「${newStatus}」？`)) return;
@@ -320,7 +413,7 @@ async function toggleSiteStatus(id, name, currentStatus) {
   });
   if (res.ok) loadAdminData();
 }
-
+ 
 // ===== 工序管理 =====
 function renderProcedures() {
   const tbody = document.querySelector('#procedures-table tbody');
@@ -338,7 +431,7 @@ function renderProcedures() {
     </tr>
   `).join('') || '<tr><td colspan="4" class="empty">尚無工序</td></tr>';
 }
-
+ 
 async function addProcedure() {
   const name = document.getElementById('new-proc-name').value.trim();
   if (!name) return alert('請輸入工序名稱');
@@ -352,7 +445,7 @@ async function addProcedure() {
     loadAdminData();
   }
 }
-
+ 
 async function toggleProcedure(id, name, order, enabled) {
   const newEnabled = enabled !== '是';
   const res = await postAction({
@@ -361,7 +454,7 @@ async function toggleProcedure(id, name, order, enabled) {
   });
   if (res.ok) loadAdminData();
 }
-
+ 
 // ===== 報表 =====
 async function loadReport() {
   const params = new URLSearchParams({
@@ -375,7 +468,7 @@ async function loadReport() {
     const res = await fetch(API_URL + '?' + params.toString());
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
-
+ 
     // 統計
     const totalDays = data.salary.reduce((s, x) => s + x.days, 0);
     const totalPay = data.salary.reduce((s, x) => s + x.total, 0);
@@ -385,17 +478,17 @@ async function loadReport() {
       <div class="stat"><div class="num">${totalPay.toLocaleString()}</div><div class="label">薪資合計 (元)</div></div>
       <div class="stat"><div class="num">${data.progress.length}</div><div class="label">工程作業日</div></div>
     `;
-
+ 
     // 薪資
     document.querySelector('#salary-table tbody').innerHTML = data.salary.map(s => `
       <tr><td>${s.name}</td><td>${s.days}</td><td>${s.dailyWage}</td><td><strong>${s.total.toLocaleString()}</strong></td></tr>
     `).join('') || '<tr><td colspan="4" class="empty">無資料</td></tr>';
-
+ 
     // 進度
     document.querySelector('#progress-table tbody').innerHTML = data.progress.map(p => `
       <tr><td>${p.date}</td><td>${p.site}</td><td>${p.procedures}</td><td>${p.workers}</td><td>${p.photos}</td></tr>
     `).join('') || '<tr><td colspan="5" class="empty">無資料</td></tr>';
-
+ 
     // 明細
     document.querySelector('#records-table tbody').innerHTML = data.records.map(r => `
       <tr>
@@ -411,13 +504,13 @@ async function loadReport() {
         <td>${r['備註'] || ''}</td>
       </tr>
     `).join('') || '<tr><td colspan="10" class="empty">無資料</td></tr>';
-
+ 
     window._currentReport = data;
   } catch (err) {
     alert('查詢失敗: ' + err.message);
   }
 }
-
+ 
 function photoLinks(r) {
   const links = [];
   if (r['上班自拍']) links.push(`<a class="photo-link" href="${r['上班自拍']}" target="_blank">上班</a>`);
@@ -428,7 +521,7 @@ function photoLinks(r) {
   }
   return links.join(' ');
 }
-
+ 
 function downloadCSV() {
   const data = window._currentReport;
   if (!data || !data.records.length) return alert('無資料可下載');
@@ -449,7 +542,7 @@ function downloadCSV() {
   a.download = `打卡記錄_${month}_${site}.csv`;
   a.click();
 }
-
+ 
 async function postAction(payload) {
   try {
     const res = await fetch(API_URL, {
@@ -464,7 +557,7 @@ async function postAction(payload) {
     return { ok: false };
   }
 }
-
+ 
 function formatDate(d) {
   if (!d) return '-';
   if (d instanceof Date) d = d.toISOString();
@@ -477,4 +570,3 @@ function formatTime(t) {
 </script>
 </body>
 </html>
-
