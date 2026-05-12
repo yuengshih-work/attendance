@@ -19,6 +19,7 @@ body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-ser
              border-radius: 12px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .login-box h2 { margin-top: 0; }
 #g_id_signin { display: flex; justify-content: center; margin-top: 20px; }
+.g_id_signin { display: flex; justify-content: center; margin-top: 20px; }
 
 .tabs { display: flex; gap: 4px; border-bottom: 2px solid #e5e7eb; margin-bottom: 20px;
         overflow-x: auto; }
@@ -75,11 +76,17 @@ tr:hover td { background: #fafafa; }
 <div id="login-screen" class="login-box">
   <h2>外牆翻修打卡後台</h2>
   <p style="color:#666">請使用授權的 Google 帳號登入</p>
-  <div id="g_id_signin"></div>
   <div id="g_id_onload"
        data-client_id="166343824840-ea4pb0vebgv6ofnpjddof5dfva8ro2tl.apps.googleusercontent.com"
        data-callback="handleCredentialResponse"
        data-auto_prompt="false"></div>
+  <div class="g_id_signin"
+       data-type="standard"
+       data-size="large"
+       data-theme="outline"
+       data-text="sign_in_with"
+       data-shape="rectangular"
+       data-logo_alignment="left"></div>
 </div>
 
 <div id="main-screen" style="display:none">
@@ -470,3 +477,4 @@ function formatTime(t) {
 </script>
 </body>
 </html>
+
