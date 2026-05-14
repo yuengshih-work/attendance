@@ -63,6 +63,9 @@ tr:hover td { background: #fafafa; }
 .stat.warn { background: #fef2f2; border: 1px solid #fecaca; }
 .stat.warn .num { color: #dc2626; }
 .warn-tag { color: #dc2626; font-weight: 600; font-size: 12px; }
+.material-tag { color: #b45309; font-size: 12px; background: #fef3c7; padding: 2px 6px; border-radius: 4px; }
+.buy-tag { color: #166534; font-size: 12px; background: #dcfce7; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+.buy-tag small { color: #15803d; }
 tr.incomplete-row td { background: #fffbeb; }
 tr.incomplete-row:hover td { background: #fef3c7; }
 
@@ -140,7 +143,7 @@ tr.incomplete-row:hover td { background: #fef3c7; }
       <div class="card">
         <h3>💰 薪資彙總 (日薪制)</h3>
         <table id="salary-table">
-          <thead><tr><th>姓名</th><th>出勤天數</th><th>日薪</th><th>應發薪資</th></tr></thead>
+          <thead><tr><th>姓名</th><th>出勤天數</th><th>日薪</th><th>應發薪資</th><th>勞報單</th><th>扣繳 (7%)</th><th>代買材料</th><th>實發合計</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -160,7 +163,7 @@ tr.incomplete-row:hover td { background: #fef3c7; }
             <thead><tr>
               <th>日期</th><th>姓名</th><th>案場</th><th>工序</th>
               <th>上班</th><th>下班</th><th>工時</th><th>日薪</th>
-              <th>照片</th><th>備註</th>
+              <th>照片</th><th>材料需求</th><th>代買材料</th><th>備註</th>
             </tr></thead>
             <tbody></tbody>
           </table>
@@ -177,6 +180,7 @@ tr.incomplete-row:hover td { background: #fef3c7; }
           <div class="field"><label>姓名 *</label><input id="new-emp-name" placeholder="王大明"></div>
           <div class="field"><label>日薪 *</label><input type="number" id="new-emp-wage" placeholder="2500"></div>
           <div class="field"><label>手機</label><input id="new-emp-phone" placeholder="09xxxxxxxx"></div>
+          <div class="field"><label>開立勞報單</label><select id="new-emp-receipt"><option value="是">是（正常發薪）</option><option value="否">否（扣 7%）</option></select></div>
           <div><button class="success" onclick="addEmployee()">新增</button></div>
         </div>
         <div style="font-size:12px;color:#888;margin-top:8px">
@@ -186,7 +190,7 @@ tr.incomplete-row:hover td { background: #fef3c7; }
       <div class="card">
         <h3>現有員工</h3>
         <table id="employees-table">
-          <thead><tr><th>員工ID</th><th>姓名</th><th>日薪</th><th>手機</th><th>啟用</th><th>操作</th></tr></thead>
+          <thead><tr><th>員工ID</th><th>姓名</th><th>日薪</th><th>手機</th><th>勞報單</th><th>啟用</th><th>操作</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -319,15 +323,18 @@ function renderEmployees() {
       <td>${e['姓名']}</td>
       <td>${Number(e['日薪']).toLocaleString()}</td>
       <td>${e['手機'] || '-'}</td>
+      <td>${e['開立勞報單'] === '否'
+        ? '<span class="badge gray">否 (扣7%)</span>'
+        : '<span class="badge green">是</span>'}</td>
       <td><span class="badge ${e['啟用']==='是'?'green':'gray'}">${e['啟用']}</span></td>
       <td>
         <button class="action-btn ${e['啟用']==='是'?'secondary':'success'}"
-                onclick="toggleEmployee('${e['員工ID']}', '${e['姓名']}', '${e['日薪']}', '${e['手機']||''}', '${e['啟用']}')">
+                onclick="toggleEmployee('${e['員工ID']}', '${e['姓名']}', '${e['日薪']}', '${e['手機']||''}', '${e['開立勞報單']||'是'}', '${e['啟用']}')">
           ${e['啟用']==='是'?'停用':'啟用'}
         </button>
       </td>
     </tr>
-  `).join('') || '<tr><td colspan="6" class="empty">尚無員工</td></tr>';
+  `).join('') || '<tr><td colspan="7" class="empty">尚無員工</td></tr>';
 }
 
 async function addEmployee() {
@@ -335,31 +342,36 @@ async function addEmployee() {
   const name = document.getElementById('new-emp-name').value.trim();
   const wage = document.getElementById('new-emp-wage').value;
   const phone = document.getElementById('new-emp-phone').value.trim();
+  const receipt = document.getElementById('new-emp-receipt').value;
   if (!id) return alert('請輸入員工ID');
   if (!name) return alert('請輸入姓名');
   if (!wage) return alert('請輸入日薪');
   const res = await postAction({
     action: 'updateEmployees', mode: 'add',
     email: currentUser.email,
-    id, name, dailyWage: wage, phone
+    id, name, dailyWage: wage, phone,
+    hasReceipt: receipt === '是'
   });
   if (res.ok) {
     document.getElementById('new-emp-id').value = '';
     document.getElementById('new-emp-name').value = '';
     document.getElementById('new-emp-wage').value = '';
     document.getElementById('new-emp-phone').value = '';
+    document.getElementById('new-emp-receipt').value = '是';
     loadAdminData();
   }
 }
 
-async function toggleEmployee(id, name, wage, phone, currentEnabled) {
+async function toggleEmployee(id, name, wage, phone, receipt, currentEnabled) {
   const newEnabled = currentEnabled !== '是';
   const action = newEnabled ? '啟用' : '停用';
   if (!confirm(`確定要將「${name}」改為${action}？\n（停用後，工人打卡頁面下拉會看不到此人，但歷史記錄保留）`)) return;
   const res = await postAction({
     action: 'updateEmployees', mode: 'update',
     email: currentUser.email,
-    id, name, dailyWage: wage, phone, enabled: newEnabled
+    id, name, dailyWage: wage, phone,
+    hasReceipt: receipt === '是',
+    enabled: newEnabled
   });
   if (res.ok) loadAdminData();
 }
@@ -476,19 +488,28 @@ async function loadReport() {
 
     // 統計
     const totalDays = data.salary.reduce((s, x) => s + x.days, 0);
-    const totalPay = data.salary.reduce((s, x) => s + x.total, 0);
+    const totalNet = data.salary.reduce((s, x) => s + x.net, 0);
     const incompleteCount = data.records.filter(r => r['上班時間'] && !r['下班時間']).length;
     document.getElementById('stats').innerHTML = `
       <div class="stat"><div class="num">${data.records.length}</div><div class="label">打卡筆數</div></div>
       <div class="stat"><div class="num">${totalDays}</div><div class="label">總出工日</div></div>
-      <div class="stat"><div class="num">${totalPay.toLocaleString()}</div><div class="label">薪資合計 (元)</div></div>
+      <div class="stat"><div class="num">${totalNet.toLocaleString()}</div><div class="label">實發薪資合計 (元)</div></div>
       <div class="stat ${incompleteCount > 0 ? 'warn' : ''}"><div class="num">${incompleteCount}</div><div class="label">⚠️ 未完成打卡</div></div>
     `;
 
     // 薪資
     document.querySelector('#salary-table tbody').innerHTML = data.salary.map(s => `
-      <tr><td>${s.name}</td><td>${s.days}</td><td>${s.dailyWage}</td><td><strong>${s.total.toLocaleString()}</strong></td></tr>
-    `).join('') || '<tr><td colspan="4" class="empty">無資料</td></tr>';
+      <tr>
+        <td>${s.name}</td>
+        <td>${s.days}</td>
+        <td>${s.dailyWage.toLocaleString()}</td>
+        <td>${s.gross.toLocaleString()}</td>
+        <td>${s.hasReceipt ? '<span class="badge green">是</span>' : '<span class="badge gray">否</span>'}</td>
+        <td>${s.deduction > 0 ? '<span style="color:#dc2626">-' + s.deduction.toLocaleString() + '</span>' : '-'}</td>
+        <td>${s.buyTotal > 0 ? '<span style="color:#16a34a">+' + s.buyTotal.toLocaleString() + '</span>' : '-'}</td>
+        <td><strong>${s.net.toLocaleString()}</strong></td>
+      </tr>
+    `).join('') || '<tr><td colspan="8" class="empty">無資料</td></tr>';
 
     // 進度
     document.querySelector('#progress-table tbody').innerHTML = data.progress.map(p => `
@@ -501,6 +522,12 @@ async function loadReport() {
       const outTimeCell = incomplete
         ? '<span class="warn-tag">⚠️ 未打卡</span>'
         : formatTime(r['下班時間']);
+      const materialCell = r['需補充材料'] === '是'
+        ? `<span class="material-tag">🔧 ${r['材料內容'] || '需補充'}</span>`
+        : '';
+      const buyCell = r['代買材料'] === '是'
+        ? `<span class="buy-tag">🛒 $${Number(r['代買金額']||0).toLocaleString()}<br><small>${r['代買品項']||''}${r['發票號碼'] ? ' / 發票:' + r['發票號碼'] : ''}</small></span>`
+        : '';
       return `
       <tr class="${incomplete ? 'incomplete-row' : ''}">
         <td>${formatDate(r['日期'])}</td>
@@ -512,9 +539,11 @@ async function loadReport() {
         <td>${r['工時'] || '-'}</td>
         <td>${r['日薪'] || '-'}</td>
         <td>${photoLinks(r)}</td>
+        <td>${materialCell}</td>
+        <td>${buyCell}</td>
         <td>${r['備註'] || ''}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="10" class="empty">無資料</td></tr>';
+    }).join('') || '<tr><td colspan="12" class="empty">無資料</td></tr>';
 
     window._currentReport = data;
   } catch (err) {
@@ -536,14 +565,17 @@ function photoLinks(r) {
 function downloadCSV() {
   const data = window._currentReport;
   if (!data || !data.records.length) return alert('無資料可下載');
-  const headers = ['日期','姓名','案場','工序','上班時間','下班時間','工時','日薪','備註'];
+  const headers = ['日期','姓名','案場','工序','上班時間','下班時間','工時','日薪','需補充材料','材料內容','代買材料','代買金額','發票號碼','代買品項','備註'];
   const rows = data.records.map(r => {
     const incomplete = r['上班時間'] && !r['下班時間'];
     return [
       formatDate(r['日期']), r['姓名'], r['案場'], r['工序'],
       formatTime(r['上班時間']),
       incomplete ? '未打卡' : formatTime(r['下班時間']),
-      r['工時']||'', r['日薪']||'', r['備註']||''
+      r['工時']||'', r['日薪']||'',
+      r['需補充材料']||'', r['材料內容']||'',
+      r['代買材料']||'', r['代買金額']||'', r['發票號碼']||'', r['代買品項']||'',
+      r['備註']||''
     ];
   });
   const csv = '\uFEFF' + [headers, ...rows].map(row =>
@@ -585,4 +617,3 @@ function formatTime(t) {
 </script>
 </body>
 </html>
-
