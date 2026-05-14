@@ -185,7 +185,8 @@ async function loadConfig() {
         const opt = document.createElement('option');
         opt.value = item.id;
         opt.dataset.name = item.name;
-        opt.textContent = item.name;
+        // 員工下拉顯示編號，其他（案場/工序）顯示名稱
+        opt.textContent = (id === 'employee') ? item.id : item.name;
         sel.appendChild(opt);
       });
     };
