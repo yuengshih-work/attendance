@@ -75,6 +75,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .gps-status { font-size: 12px; color: #999; margin-top: 4px; }
 .gps-status.ok { color: #16a34a; }
+.material-check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; }
+.material-check input { width: auto; }
+.material-check span { font-size: 14px; }
 </style>
 </head>
 <body>
@@ -124,6 +127,27 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     <div class="field">
       <label>備註</label>
       <textarea id="note" placeholder="工地狀況、特殊事項..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="material-check">
+        <input type="checkbox" id="need-material" onchange="toggleMaterialBox()">
+        <span>🔧 需補充材料（勾選後通知管理員）</span>
+      </label>
+      <textarea id="material-note" placeholder="請說明需要補充什麼材料、數量..."
+                style="display:none;margin-top:8px"></textarea>
+    </div>
+
+    <div class="field">
+      <label class="material-check">
+        <input type="checkbox" id="buy-material" onchange="toggleBuyBox()">
+        <span>🛒 代買材料（墊款，會列入薪資結算）</span>
+      </label>
+      <div id="buy-box" style="display:none;margin-top:8px">
+        <input type="number" id="buy-amount" placeholder="代買金額（元）" style="margin-bottom:8px">
+        <input type="text" id="buy-invoice" placeholder="發票號碼" style="margin-bottom:8px">
+        <textarea id="buy-items" placeholder="代買品項（例如：水泥 2 包、矽利康 5 條）"></textarea>
+      </div>
     </div>
 
     <div class="gps-status" id="gps-status">📍 定位中...</div>
@@ -256,6 +280,18 @@ document.getElementById('workphotos').addEventListener('change', async e => {
   }
 });
 
+// ===== 材料需求勾選框 =====
+function toggleMaterialBox() {
+  const checked = document.getElementById('need-material').checked;
+  document.getElementById('material-note').style.display = checked ? 'block' : 'none';
+}
+
+// ===== 代買材料勾選框 =====
+function toggleBuyBox() {
+  const checked = document.getElementById('buy-material').checked;
+  document.getElementById('buy-box').style.display = checked ? 'block' : 'none';
+}
+
 // ===== 提交 =====
 async function submit(action) {
   const employeeSel = document.getElementById('employee');
@@ -266,6 +302,21 @@ async function submit(action) {
   if (!siteSel.value) return showToast('請選擇案場', 'error');
   if (!procedureSel.value) return showToast('請選擇工序', 'error');
   if (!selfieData) return showToast('請拍自拍照', 'error');
+
+  const needMaterial = document.getElementById('need-material').checked;
+  const materialNote = document.getElementById('material-note').value.trim();
+  if (needMaterial && !materialNote) {
+    return showToast('請填寫需補充的材料內容', 'error');
+  }
+
+  const buyMaterial = document.getElementById('buy-material').checked;
+  const buyAmount = document.getElementById('buy-amount').value;
+  const buyInvoice = document.getElementById('buy-invoice').value.trim();
+  const buyItems = document.getElementById('buy-items').value.trim();
+  if (buyMaterial) {
+    if (!buyAmount || Number(buyAmount) <= 0) return showToast('請填寫代買金額', 'error');
+    if (!buyItems) return showToast('請填寫代買品項', 'error');
+  }
 
   const buttons = document.querySelectorAll('button');
   buttons.forEach(b => b.disabled = true);
@@ -283,7 +334,13 @@ async function submit(action) {
       selfie: selfieData,
       workPhotos: action === 'clockOut' ? workPhotosData : [],
       gps: gpsData,
-      note: document.getElementById('note').value
+      note: document.getElementById('note').value,
+      needMaterial: needMaterial,
+      materialNote: materialNote,
+      buyMaterial: buyMaterial,
+      buyAmount: buyAmount,
+      buyInvoice: buyInvoice,
+      buyItems: buyItems
     };
 
     const res = await fetch(API_URL, {
@@ -301,6 +358,14 @@ async function submit(action) {
     document.getElementById('work-preview').innerHTML = '';
     document.getElementById('selfie-label').textContent = '點此拍照';
     document.getElementById('note').value = '';
+    document.getElementById('need-material').checked = false;
+    document.getElementById('material-note').value = '';
+    document.getElementById('material-note').style.display = 'none';
+    document.getElementById('buy-material').checked = false;
+    document.getElementById('buy-amount').value = '';
+    document.getElementById('buy-invoice').value = '';
+    document.getElementById('buy-items').value = '';
+    document.getElementById('buy-box').style.display = 'none';
   } catch (err) {
     showToast('失敗: ' + err.message, 'error');
   } finally {
@@ -318,3 +383,4 @@ function showToast(msg, type) {
 </script>
 </body>
 </html>
+
