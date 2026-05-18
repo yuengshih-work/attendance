@@ -53,6 +53,11 @@ button {
 button:active { transform: scale(0.97); }
 .btn-in { background: #2c5364; color: white; }
 .btn-out { background: #c4632a; color: white; }
+.status-hint { text-align: center; font-size: 14px; margin-top: 16px; padding: 10px;
+               border-radius: 8px; display: none; }
+.status-hint.show { display: block; }
+.status-hint.in { background: #e0f2fe; color: #075985; }
+.status-hint.done { background: #dcfce7; color: #166534; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .toast {
@@ -153,9 +158,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     <div class="gps-status" id="gps-status">📍 定位中...</div>
   </div>
 
+  <div id="status-hint" class="status-hint"></div>
+
   <div class="button-row">
-    <button class="btn-in" onclick="submit('clockIn')">上班打卡</button>
-    <button class="btn-out" onclick="submit('clockOut')">下班打卡</button>
+    <button class="btn-in" id="btn-in" onclick="submit('clockIn')">上班打卡</button>
+    <button class="btn-out" id="btn-out" onclick="submit('clockOut')">下班打卡</button>
   </div>
 </div>
 
@@ -217,11 +224,66 @@ async function loadConfig() {
     fill('employee', data.employees);
     fill('site', data.sites);
     fill('procedure', data.procedures);
+
+    // 員工或案場變更時，自動檢查今日打卡狀態
+    document.getElementById('employee').addEventListener('change', checkClockStatus);
+    document.getElementById('site').addEventListener('change', checkClockStatus);
   } catch (err) {
     showToast('載入失敗: ' + err.message, 'error');
   }
 }
 loadConfig();
+
+// ===== 檢查今日打卡狀態，自動鎖定該按的按鈕 =====
+async function checkClockStatus() {
+  const empSel = document.getElementById('employee');
+  const siteSel = document.getElementById('site');
+  const btnIn = document.getElementById('btn-in');
+  const btnOut = document.getElementById('btn-out');
+  const hint = document.getElementById('status-hint');
+
+  // 員工或案場沒選齊，兩顆都開放、不顯示提示
+  if (!empSel.value || !siteSel.value) {
+    btnIn.disabled = false;
+    btnOut.disabled = false;
+    hint.className = 'status-hint';
+    return;
+  }
+
+  try {
+    const params = new URLSearchParams({
+      action: 'checkStatus',
+      employeeId: empSel.value,
+      site: siteSel.selectedOptions[0].dataset.name
+    });
+    const res = await fetch(API_URL + '?' + params.toString());
+    const data = await res.json();
+    if (!data.ok) return;
+
+    if (data.status === 'none') {
+      // 還沒打卡 → 只開放上班
+      btnIn.disabled = false;
+      btnOut.disabled = true;
+      hint.className = 'status-hint';
+    } else if (data.status === 'workingIn') {
+      // 已打上班 → 只開放下班
+      btnIn.disabled = true;
+      btnOut.disabled = false;
+      hint.textContent = '✅ 今日已打上班卡，請打下班卡';
+      hint.className = 'status-hint show in';
+    } else if (data.status === 'done') {
+      // 上下班都打完 → 兩顆都鎖
+      btnIn.disabled = true;
+      btnOut.disabled = true;
+      hint.textContent = '✓ 今日此案場已完成上下班打卡';
+      hint.className = 'status-hint show done';
+    }
+  } catch (err) {
+    // 查詢失敗就不鎖，保持兩顆都能按（避免卡住工人）
+    btnIn.disabled = false;
+    btnOut.disabled = false;
+  }
+}
 
 // ===== 照片壓縮 =====
 function compressImage(file, maxWidth = 1280, quality = 0.8) {
@@ -371,6 +433,8 @@ async function submit(action) {
   } finally {
     buttons.forEach(b => b.disabled = false);
     targetBtn.textContent = originalText;
+    // 重新檢查狀態（打完上班卡後，自動鎖成只能打下班）
+    checkClockStatus();
   }
 }
 
@@ -383,4 +447,3 @@ function showToast(msg, type) {
 </script>
 </body>
 </html>
-
