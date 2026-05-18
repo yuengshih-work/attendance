@@ -91,17 +91,8 @@ tr.incomplete-row:hover td { background: #fef3c7; }
 <div id="login-screen" class="login-box">
   <h2>外牆翻修打卡後台</h2>
   <p style="color:#666">請使用授權的 Google 帳號登入</p>
-  <div id="g_id_onload"
-       data-client_id="166343824840-ea4pb0vebgv6ofnpjddof5dfva8ro2tl.apps.googleusercontent.com"
-       data-callback="handleCredentialResponse"
-       data-auto_prompt="false"></div>
-  <div class="g_id_signin"
-       data-type="standard"
-       data-size="large"
-       data-theme="outline"
-       data-text="sign_in_with"
-       data-shape="rectangular"
-       data-logo_alignment="left"></div>
+  <div id="g-signin-btn" style="display:flex;justify-content:center;margin-top:20px"></div>
+  <p id="g-signin-status" style="color:#999;font-size:13px;margin-top:12px">登入元件載入中...</p>
 </div>
 
 <div id="main-screen" style="display:none">
@@ -275,7 +266,7 @@ let currentUser = null;
 let currentData = null;
 
 // ===== Google 登入 =====
-window.handleCredentialResponse = function(response) {
+function handleCredentialResponse(response) {
   try {
     // 正確解析 JWT：base64url → base64 → UTF-8（支援中文姓名）
     const base64Url = response.credential.split('.')[1];
@@ -301,7 +292,7 @@ window.handleCredentialResponse = function(response) {
     alert('登入解析失敗: ' + err.message);
     console.error('JWT decode error', err);
   }
-};
+}
 
 function logout() {
   currentUser = null;
@@ -683,8 +674,44 @@ function formatTime(t) {
   if (!t) return '-';
   return String(t).substring(0, 8);
 }
+
+// ===== Google 登入元件初始化（程式化，避免時序問題）=====
+const GOOGLE_CLIENT_ID = '166343824840-ea4pb0vebgv6ofnpjddof5dfva8ro2tl.apps.googleusercontent.com';
+
+function loadGoogleSignIn() {
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.async = true;
+  script.defer = true;
+  script.onload = function() {
+    try {
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleCredentialResponse,
+        auto_select: false,
+        use_fedcm_for_prompt: false
+      });
+      google.accounts.id.renderButton(
+        document.getElementById('g-signin-btn'),
+        { theme: 'outline', size: 'large', text: 'signin_with',
+          shape: 'rectangular', width: 260 }
+      );
+      document.getElementById('g-signin-status').style.display = 'none';
+    } catch (err) {
+      document.getElementById('g-signin-status').textContent =
+        '登入元件初始化失敗: ' + err.message;
+      console.error('Google Sign-In init error', err);
+    }
+  };
+  script.onerror = function() {
+    document.getElementById('g-signin-status').textContent =
+      '無法載入 Google 登入元件，請檢查網路連線';
+  };
+  document.head.appendChild(script);
+}
+
+// 主程式都定義完了，最後才載入並初始化 Google 登入
+loadGoogleSignIn();
 </script>
-<!-- Google 登入元件：放在最後載入，確保 handleCredentialResponse 已定義 -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>
