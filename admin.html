@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>打卡系統後台</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 * { box-sizing: border-box; }
 body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
@@ -276,7 +275,7 @@ let currentUser = null;
 let currentData = null;
 
 // ===== Google 登入 =====
-function handleCredentialResponse(response) {
+window.handleCredentialResponse = function(response) {
   try {
     // 正確解析 JWT：base64url → base64 → UTF-8（支援中文姓名）
     const base64Url = response.credential.split('.')[1];
@@ -302,7 +301,7 @@ function handleCredentialResponse(response) {
     alert('登入解析失敗: ' + err.message);
     console.error('JWT decode error', err);
   }
-}
+};
 
 function logout() {
   currentUser = null;
@@ -445,4 +444,128 @@ async function toggleEmployee(id, name, wage, phone, receipt, currentEnabled) {
 
 // ===== 案場管理 =====
 function renderSites() {
-  const tbody = document.querySelect
+  const tbody = document.querySelector('#sites-table tbody');
+  tbody.innerHTML = currentData.sites.map(s => `
+    <tr>
+      <td>${s['案場名稱']}</td>
+      <td>${s['地址'] || '-'}</td>
+      <td>${formatDate(s['開始日期'])}</td>
+      <td>${formatDate(s['結束日期'])}</td>
+      <td><span class="badge ${s['狀態']==='進行中'?'green':'gray'}">${s['狀態']}</span></td>
+      <td>
+        <button class="action-btn ${s['狀態']==='進行中'?'secondary':'success'}"
+                onclick="toggleSiteStatus('${s['案場ID']}', '${s['案場名稱']}', '${s['狀態']}')">
+          ${s['狀態']==='進行中'?'結案':'重啟'}
+        </button>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" class="empty">尚無案場</td></tr>';
+}
+
+async function addSite() {
+  const name = document.getElementById('new-site-name').value.trim();
+  if (!name) return alert('請輸入案場名稱');
+  const res = await postAction({
+    action: 'updateSites', mode: 'add',
+    email: currentUser.email,
+    name,
+    address: document.getElementById('new-site-address').value,
+    startDate: document.getElementById('new-site-start').value,
+    endDate: document.getElementById('new-site-end').value,
+    status: '進行中'
+  });
+  if (res.ok) {
+    document.getElementById('new-site-name').value = '';
+    document.getElementById('new-site-address').value = '';
+    loadAdminData();
+  }
+}
+
+async function toggleSiteStatus(id, name, currentStatus) {
+  const newStatus = currentStatus === '進行中' ? '已結案' : '進行中';
+  if (!confirm(`確定要將「${name}」改為「${newStatus}」？`)) return;
+  const site = currentData.sites.find(s => s['案場ID'] === id);
+  const res = await postAction({
+    action: 'updateSites', mode: 'update',
+    email: currentUser.email,
+    id, name,
+    address: site['地址'],
+    startDate: site['開始日期'],
+    endDate: site['結束日期'],
+    status: newStatus
+  });
+  if (res.ok) loadAdminData();
+}
+
+// ===== 工序管理 =====
+function renderProcedures() {
+  const tbody = document.querySelector('#procedures-table tbody');
+  tbody.innerHTML = currentData.procedures.map(p => `
+    <tr>
+      <td>${p['排序']}</td>
+      <td>${p['工序名稱']}</td>
+      <td>${p['啟用']}</td>
+      <td>
+        <button class="action-btn ${p['啟用']==='是'?'secondary':'success'}"
+                onclick="toggleProcedure('${p['工序ID']}', '${p['工序名稱']}', '${p['排序']}', '${p['啟用']}')">
+          ${p['啟用']==='是'?'停用':'啟用'}
+        </button>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="4" class="empty">尚無工序</td></tr>';
+}
+
+async function addProcedure() {
+  const name = document.getElementById('new-proc-name').value.trim();
+  if (!name) return alert('請輸入工序名稱');
+  const order = document.getElementById('new-proc-order').value || 99;
+  const res = await postAction({
+    action: 'updateProcedures', mode: 'add',
+    email: currentUser.email, name, order
+  });
+  if (res.ok) {
+    document.getElementById('new-proc-name').value = '';
+    loadAdminData();
+  }
+}
+
+async function toggleProcedure(id, name, order, enabled) {
+  const newEnabled = enabled !== '是';
+  const res = await postAction({
+    action: 'updateProcedures', mode: 'update',
+    email: currentUser.email, id, name, order, enabled: newEnabled
+  });
+  if (res.ok) loadAdminData();
+}
+
+// ===== 報表 =====
+async function loadReport() {
+  const params = new URLSearchParams({
+    action: 'report',
+    email: currentUser.email,
+    month: document.getElementById('filter-month').value,
+    site: document.getElementById('filter-site').value,
+    employee: document.getElementById('filter-employee').value
+  });
+  try {
+    const res = await fetch(API_URL + '?' + params.toString());
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    // 統計
+    const totalDays = data.salary.reduce((s, x) => s + x.days, 0);
+    const totalNet = data.salary.reduce((s, x) => s + x.net, 0);
+    const incompleteCount = data.records.filter(r => r['上班時間'] && !r['下班時間']).length;
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="num">${data.records.length}</div><div class="label">打卡筆數</div></div>
+      <div class="stat"><div class="num">${totalDays}</div><div class="label">總出工日</div></div>
+      <div class="stat"><div class="num">${totalNet.toLocaleString()}</div><div class="label">實發薪資合計 (元)</div></div>
+      <div class="stat ${incompleteCount > 0 ? 'warn' : ''}"><div class="num">${incompleteCount}</div><div class="label">⚠️ 未完成打卡</div></div>
+    `;
+
+    // 薪資
+    document.querySelector('#salary-table tbody').innerHTML = data.salary.map(s => `
+      <tr>
+        <td>${s.name}</td>
+        <td>${s.days}</td>
+        <td>${
