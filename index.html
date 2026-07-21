@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>外牆施工打卡系統</title>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  margin: 0; padding: 0; background: #f5f5f7; color: #1a1a1a;
+  min-height: 100vh;
+}
+.container { max-width: 480px; margin: 0 auto; padding: 16px; }
+.header {
+  background: linear-gradient(135deg, #2c5364, #203a43);
+  color: white; padding: 20px; border-radius: 16px; margin-bottom: 16px;
+  text-align: center;
+}
+.header h1 { margin: 0; font-size: 22px; font-weight: 600; }
+.header .clock { font-size: 36px; font-weight: 300; margin-top: 8px; letter-spacing: 2px; }
+.header .date { font-size: 14px; opacity: 0.8; margin-top: 4px; }
+
+.marquee-bar { display: flex; align-items: center; background: #fef3c7; border: 1px solid #fcd34d;
+               border-radius: 10px; margin-bottom: 16px; padding: 8px 0; overflow: hidden; }
+.marquee-icon { flex-shrink: 0; padding: 0 12px; font-size: 18px; }
+.marquee-track { flex: 1; white-space: nowrap; overflow: hidden; position: relative; }
+.marquee-content { display: inline-block; padding-left: 100%; animation: marquee 8s linear infinite;
+                   color: #78350f; font-size: 14px; font-weight: 500; }
+.marquee-content span { display: inline-block; margin-right: 60px; }
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+.card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 14px; color: #555; margin-bottom: 6px; font-weight: 500; }
+.field label .req { color: #e74c3c; }
+select, input, textarea {
+  width: 100%; padding: 12px; font-size: 16px; border: 1px solid #d1d5db;
+  border-radius: 8px; background: white; font-family: inherit;
+}
+select:focus, input:focus, textarea:focus { outline: none; border-color: #2c5364; }
+textarea { resize: vertical; min-height: 60px; }
+
+.photo-area {
+  border: 2px dashed #d1d5db; border-radius: 12px; padding: 24px;
+  text-align: center; cursor: pointer; transition: all 0.2s;
+  background: #fafafa;
+}
+.photo-area:active { background: #f0f0f0; }
+.photo-area .icon { font-size: 36px; margin-bottom: 8px; }
+.photo-area .label { font-size: 14px; color: #666; }
+.photo-area input { display: none; }
+.photo-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.photo-preview img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; }
+
+.button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+button {
+  width: 100%; padding: 16px; font-size: 17px; font-weight: 600;
+  border: none; border-radius: 12px; cursor: pointer;
+  font-family: inherit; transition: transform 0.1s;
+}
+button:active { transform: scale(0.97); }
+.btn-in { background: #2c5364; color: white; }
+.btn-out { background: #c4632a; color: white; }
+.status-hint { text-align: center; font-size: 14px; margin-top: 16px; padding: 10px;
+               border-radius: 8px; display: none; }
+.status-hint.show { display: block; }
+.status-hint.in { background: #e0f2fe; color: #075985; }
+.status-hint.done { background: #dcfce7; color: #166534; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.toast {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.88); color: white; padding: 16px 26px;
+  border-radius: 16px; font-size: 16px; opacity: 0; transition: opacity 0.3s;
+  pointer-events: none; z-index: 9999; max-width: 88%; text-align: center;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+}
+.toast.show { opacity: 1; }
+.toast.success { background: #16a34a; }
+.toast.error { background: #dc2626; }
+
+.spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white; border-radius: 50%;
+  animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.gps-status { font-size: 12px; color: #999; margin-top: 4px; }
+.gps-status.ok { color: #16a34a; }
+.material-check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; }
+.material-check input { width: auto; }
+.material-check span { font-size: 14px; }
+.procedure-list { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px; background: #fafafa;
+                  max-height: 200px; overflow-y: auto; }
+.procedure-item { display: flex; align-items: center; gap: 10px; padding: 8px 6px;
+                  border-radius: 6px; cursor: pointer; font-size: 15px; }
+.procedure-item:hover { background: #f0f0f0; }
+.procedure-item input { width: 18px; height: 18px; cursor: pointer; }
+.procedure-item.checked { background: #fef3c7; }
+.invoice-row { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px;
+               padding: 12px; margin-bottom: 8px; position: relative; }
+.invoice-row .row-num { font-size: 12px; color: #6b7280; margin-bottom: 8px; font-weight: 600; }
+.invoice-row input, .invoice-row textarea { margin-bottom: 6px; }
+.invoice-row .del-btn { position: absolute; top: 8px; right: 8px; background: #fee2e2;
+                       color: #991b1b; border: none; padding: 4px 10px; border-radius: 6px;
+                       font-size: 12px; cursor: pointer; }
+.add-invoice-btn { width: 100%; padding: 10px; background: #f3f4f6; color: #2563eb;
+                   border: 1px dashed #93c5fd; border-radius: 8px; cursor: pointer;
+                   font-family: inherit; font-size: 14px; font-weight: 500; }
+.add-invoice-btn:hover { background: #e5edff; }
+
+/* ===== 器材登記 ===== */
+.btn-equip { width: 100%; margin-top: 12px; padding: 15px; font-size: 16px; font-weight: 600;
+             background: #0f766e; color: white; border: none; border-radius: 12px; cursor: pointer; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex;
+                 align-items: flex-end; justify-content: center; z-index: 200; }
+.modal-box { background: white; width: 100%; max-width: 480px; border-radius: 16px 16px 0 0;
+             max-height: 88vh; display: flex; flex-direction: column; }
+.modal-head { display: flex; justify-content: space-between; align-items: center;
+              padding: 16px 20px; border-bottom: 1px solid #eee; font-size: 18px; font-weight: 600; }
+.modal-close { background: none; border: none; font-size: 22px; color: #888;
+               width: auto; padding: 4px 8px; cursor: pointer; }
+.modal-body { padding: 16px 20px; overflow-y: auto; }
+.modal-foot { padding: 14px 20px; border-top: 1px solid #eee; }
+.btn-eq-submit { width: 100%; padding: 15px; font-size: 16px; font-weight: 600;
+                 background: #0f766e; color: white; border: none; border-radius: 12px; cursor: pointer; }
+.eq-hint { font-size: 13px; color: #666; margin-bottom: 10px; }
+.eq-item { display: flex; align-items: center; justify-content: space-between;
+           padding: 12px 4px; border-bottom: 1px solid #f0f0f0; }
+.eq-name { font-size: 16px; font-weight: 500; }
+.eq-stepper { display: flex; align-items: center; gap: 8px; }
+.eq-stepper button { width: 42px; height: 42px; padding: 0; font-size: 22px; font-weight: 600;
+                     border: 1px solid #d1d5db; background: #f9fafb; color: #0f766e;
+                     border-radius: 10px; cursor: pointer; }
+.eq-stepper input { width: 56px; text-align: center; padding: 8px; font-size: 16px; }
+
+.eq-addbox { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+.eq-addbox-title { font-size: 14px; font-weight: 600; color: #0f766e; margin-bottom: 8px; }
+.eq-addbox-grid { display: grid; grid-template-columns: 1fr 1fr 70px auto; gap: 6px; align-items: center; }
+.eq-addbox-grid select, .eq-addbox-grid input { padding: 8px; font-size: 14px; margin: 0; }
+.eq-addbox-grid button { width: auto; padding: 9px 14px; font-size: 14px; background: #0f766e; }
+.eq-addbox-hint { font-size: 11px; color: #14746a; margin-top: 6px; }
+.eq-list-title { font-size: 13px; color: #666; font-weight: 600; margin-bottom: 6px; }
+.eqmv-row { border-bottom: 1px solid #f0f0f0; padding: 10px 2px; }
+.eqmv-info { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+.eqmv-info .loc { color: #0f766e; }
+.eqmv-info .qty { color: #6b7280; font-size: 13px; margin-left: 6px; }
+.eqmv-ctrl { display: grid; grid-template-columns: 1fr 62px auto; gap: 6px; align-items: center; }
+.eqmv-ctrl select, .eqmv-ctrl input { padding: 8px; font-size: 14px; margin: 0; }
+.eqmv-ctrl button { width: auto; padding: 9px 14px; font-size: 14px; background: #c4632a; }
+.secondary-close { background: #6b7280 !important; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>外牆翻修工程打卡</h1>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="date" id="date">--</div>
+  </div>
+
+  <div id="marquee-bar" class="marquee-bar" style="display:none">
+    <span class="marquee-icon">📢</span>
+    <div class="marquee-track" id="marquee-track"></div>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label>姓名 <span class="req">*</span></label>
+      <select id="employee"><option value="">-- 請選擇 --</option></select>
+    </div>
+
+    <div class="field">
+      <label>案場 <span class="req">*</span></label>
+      <select id="site"><option value="">-- 請選擇 --</option></select>
+    </div>
+
+    <div class="field">
+      <label>工序 <span style="font-size:12px;color:#c4632a">(下班打卡時複選)</span></label>
+      <div id="procedure-list" class="procedure-list">
+        <div style="color:#999;font-size:13px;padding:8px">載入中...</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>自拍照 <span class="req">*</span> <span style="font-size:12px;color:#999">(打卡用)</span></label>
+      <label class="photo-area" for="selfie">
+        <div class="icon">📷</div>
+        <div class="label" id="selfie-label">點此拍照</div>
+        <input type="file" id="selfie" accept="image/*" capture="user">
+      </label>
+      <div class="photo-preview" id="selfie-preview"></div>
+    </div>
+
+    <div class="field" id="work-photos-field">
+      <label>工程照片 <span style="font-size:12px;color:#999">(下班時上傳)</span></label>
+      <label class="photo-area" for="workphotos">
+        <div class="icon">🏗️</div>
+        <div class="label">點此選擇照片 (可多張)</div>
+        <input type="file" id="workphotos" accept="image/*" multiple>
+      </label>
+      <div class="photo-preview" id="work-preview"></div>
+    </div>
+
+    <div class="field">
+      <label>備註</label>
+      <textarea id="note" placeholder="工地狀況、特殊事項..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="material-check">
+        <input type="checkbox" id="need-material" onchange="toggleMaterialBox()">
+        <span>🔧 需補充材料（勾選後通知管理員）</span>
+      </label>
+      <textarea id="material-note" placeholder="請說明需要補充什麼材料、數量..."
+                style="display:none;margin-top:8px"></textarea>
+    </div>
+
+    <div class="field">
+      <label class="material-check">
+        <input type="checkbox" id="buy-material" onchange="toggleBuyBox()">
+        <span>🛒 代買材料（墊款項目，獨立追蹤付款）</span>
+      </label>
+      <div id="buy-box" style="display:none;margin-top:8px">
+        <div id="invoice-list"></div>
+        <button type="button" class="add-invoice-btn" onclick="addInvoiceRow()">+ 再加一張發票</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="material-check">
+        <input type="checkbox" id="special-situation" onchange="toggleSpecialBox()">
+        <span>📸 特殊情形（漏水、損壞、意外等狀況拍照記錄）</span>
+      </label>
+      <div id="special-box" style="display:none;margin-top:8px">
+        <label class="photo-area" for="specialphotos">
+          <div class="icon">🚨</div>
+          <div class="label">點此選擇照片 (可多張)</div>
+          <input type="file" id="specialphotos" accept="image/*" multiple>
+        </label>
+        <div class="photo-preview" id="special-preview"></div>
+        <textarea id="special-note" placeholder="請簡述特殊情形（例如：3樓西側發現漏水痕跡）"
+                  style="margin-top:8px"></textarea>
+      </div>
+    </div>
+
+    <div class="gps-status" id="gps-status">📍 定位中...</div>
+  </div>
+
+  <div id="status-hint" class="status-hint"></div>
+
+  <div class="button-row">
+    <button class="btn-in" id="btn-in" onclick="submit('clockIn')">上班打卡</button>
+    <button class="btn-out" id="btn-out" onclick="submit('clockOut')">下班打卡</button>
+  </div>
+
+  <button class="btn-equip" onclick="openEquipmentModal()">📦 器材登記</button>
+</div>
+
+<!-- 器材登記 Modal -->
+<div class="modal-overlay" id="eq-modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span>📦 器材位置 / 搬移</span>
+      <button class="modal-close" onclick="closeEquipmentModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>操作人 <span class="req">*</span></label>
+        <select id="eq-employee"><option value="">-- 請選擇 --</option></select>
+      </div>
+
+      <div class="eq-addbox">
+        <div class="eq-addbox-title">➕ 設定 / 補登數量</div>
+        <div class="eq-addbox-grid">
+          <select id="eq-add-eq"><option value="">器材</option></select>
+          <select id="eq-add-site"><option value="">案場</option></select>
+          <input id="eq-add-qty" type="number" min="0" placeholder="數量" value="0">
+          <button type="button" onclick="setConfigQty()">設定</button>
+        </div>
+        <div class="eq-addbox-hint">把「某器材在某案場」的數量直接設為此值（第一次配置或修正用）。</div>
+      </div>
+
+      <div class="eq-list-title">目前位置（按「搬移」把器材移到別的案場）</div>
+      <div id="eq-move-list">
+        <div style="color:#999;font-size:13px;padding:8px">載入中...</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-eq-submit secondary-close" onclick="closeEquipmentModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 設定 =====
+const API_URL = 'https://script.google.com/macros/s/AKfycbySGybq9MaGuUi5SSoNPidkrutr98Iuj8Fu_KGSxM3Igsh2dvqMh2iUASD3Fkjerk-qyQ/exec';
+
+let selfieData = null;
+let workPhotosData = [];
+let gpsData = '';
+
+// ===== 時鐘 =====
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('clock').textContent =
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const week = ['日','一','二','三','四','五','六'][now.getDay()];
+  document.getElementById('date').textContent =
+    `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} 星期${week}`;
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ===== GPS =====
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      gpsData = `${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
+      document.getElementById('gps-status').textContent = `📍 已定位 (${gpsData})`;
+      document.getElementById('gps-status').classList.add('ok');
+    },
+    err => {
+      document.getElementById('gps-status').textContent = '📍 未取得定位 (可選)';
+    },
+    { timeout: 10000, maximumAge: 60000 }
+  );
+}
+
+// ===== HTML 跳脫（跑馬燈用）=====
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ===== 載入設定 =====
+async function loadConfig() {
+  try {
+    const res = await fetch(API_URL + '?action=config');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    window.APP_CONFIG = data;   // 供器材登記 modal 取用員工/案場清單
+
+    const fill = (id, items) => {
+      const sel = document.getElementById(id);
+      items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.dataset.name = item.name;
+        // 員工下拉顯示編號，案場顯示名稱
+        opt.textContent = (id === 'employee') ? item.id : item.name;
+        sel.appendChild(opt);
+      });
+    };
+    fill('employee', data.employees);
+    fill('site', data.sites);
+
+    // 工序改成複選 checkbox 清單
+    const procList = document.getElementById('procedure-list');
+    procList.innerHTML = '';
+    data.procedures.forEach(p => {
+      const label = document.createElement('label');
+      label.className = 'procedure-item';
+      label.innerHTML =
+        `<input type="checkbox" value="${p.name}" onchange="this.parentElement.classList.toggle('checked', this.checked)">` +
+        `<span>${p.name}</span>`;
+      procList.appendChild(label);
+    });
+
+    // 跑馬燈：所有啟用公告串成一串，CSS 動畫不間斷捲動
+    const announcements = data.announcements || [];
+    if (announcements.length > 0) {
+      const track = document.getElementById('marquee-track');
+      const contentHtml = announcements.map(a => `<span>${escapeHtml(a)}</span>`).join('');
+      track.innerHTML = `<div class="marquee-content">${contentHtml}</div>`;
+      document.getElementById('marquee-bar').style.display = 'flex';
+    }
+
+    // 員工或案場變更時，自動檢查今日打卡狀態
+    document.getElementById('employee').addEventListener('change', checkClockStatus);
+    document.getElementById('site').addEventListener('change', checkClockStatus);
+  } catch (err) {
+    showToast('載入失敗: ' + err.message, 'error');
+  }
+}
+loadConfig();
+
+// ===== 檢查今日打卡狀態，自動鎖定該按的按鈕 =====
+async function checkClockStatus() {
+  const empSel = document.getElementById('employee');
+  const siteSel = document.getElementById('site');
+  const btnIn = document.getElementById('btn-in');
+  const btnOut = document.getElementById('btn-out');
+  const hint = document.getElementById('status-hint');
+
+  // 員工或案場沒選齊，兩顆都開放、不顯示提示
+  if (!empSel.value || !siteSel.value) {
+    btnIn.disabled = false;
+    btnOut.disabled = false;
+    hint.className = 'status-hint';
+    return;
+  }
+
+  try {
+    const params = new URLSearchParams({
+      action: 'checkStatus',
+      employeeId: empSel.value,
+      site: siteSel.selectedOptions[0].dataset.name
+    });
+    const res = await fetch(API_URL + '?' + params.toString());
+    const data = await res.json();
+    if (!data.ok) return;
+
+    if (data.status === 'none') {
+      // 還沒打卡 → 只開放上班
+      btnIn.disabled = false;
+      btnOut.disabled = true;
+      hint.className = 'status-hint';
+    } else if (data.status === 'workingIn') {
+      // 已打上班 → 只開放下班
+      btnIn.disabled = true;
+      btnOut.disabled = false;
+      hint.textContent = '✅ 今日已打上班卡，請打下班卡';
+      hint.className = 'status-hint show in';
+    } else if (data.status === 'done') {
+      // 上下班都打完 → 兩顆都鎖
+      btnIn.disabled = true;
+      btnOut.disabled = true;
+      hint.textContent = '✓ 今日此案場已完成上下班打卡';
+      hint.className = 'status-hint show done';
+    }
+  } catch (err) {
+    // 查詢失敗就不鎖，保持兩顆都能按（避免卡住工人）
+    btnIn.disabled = false;
+    btnOut.disabled = false;
+  }
+}
+
+// ===== 照片壓縮 =====
+function compressImage(file, maxWidth = 1280, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // 加時間浮水印
+        const stamp = new Date().toLocaleString('zh-TW', { hour12: false });
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(8, canvas.height - 36, ctx.measureText(stamp).width + 16, 28);
+        ctx.fillStyle = 'white';
+        ctx.fillText(stamp, 16, canvas.height - 16);
+
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ===== 照片預覽 =====
+document.getElementById('selfie').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('selfie-label').textContent = '處理中...';
+  selfieData = await compressImage(file, 800, 0.85);
+  const preview = document.getElementById('selfie-preview');
+  preview.innerHTML = `<img src="${selfieData}">`;
+  document.getElementById('selfie-label').textContent = '✓ 已拍照 (點此重拍)';
+});
+
+document.getElementById('workphotos').addEventListener('change', async e => {
+  const files = Array.from(e.target.files);
+  workPhotosData = [];
+  const preview = document.getElementById('work-preview');
+  preview.innerHTML = '';
+  for (const file of files) {
+    const data = await compressImage(file, 1280, 0.8);
+    workPhotosData.push(data);
+    const img = document.createElement('img');
+    img.src = data;
+    preview.appendChild(img);
+  }
+});
+
+// ===== 材料需求勾選框 =====
+function toggleMaterialBox() {
+  const checked = document.getElementById('need-material').checked;
+  document.getElementById('material-note').style.display = checked ? 'block' : 'none';
+}
+
+// ===== 代買材料勾選框 + 多張發票管理 =====
+function toggleBuyBox() {
+  const checked = document.getElementById('buy-material').checked;
+  document.getElementById('buy-box').style.display = checked ? 'block' : 'none';
+  // 勾選時自動加一張空白發票
+  if (checked && document.querySelectorAll('.invoice-row').length === 0) {
+    addInvoiceRow();
+  }
+}
+
+function addInvoiceRow() {
+  const list = document.getElementById('invoice-list');
+  const idx = list.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'invoice-row';
+  row.innerHTML = `
+    <div class="row-num">📄 第 ${idx} 張發票</div>
+    ${idx > 1 ? '<button type="button" class="del-btn" onclick="removeInvoiceRow(this)">移除</button>' : ''}
+    <input type="number" class="buy-amount" placeholder="代買金額（元）">
+    <input type="text" class="buy-invoice" placeholder="發票號碼">
+    <textarea class="buy-items" placeholder="代買品項（例如：水泥 2 包、矽利康 5 條）"></textarea>
+  `;
+  list.appendChild(row);
+}
+
+function removeInvoiceRow(btn) {
+  btn.parentElement.remove();
+  // 重新編號
+  document.querySelectorAll('.invoice-row').forEach((row, i) => {
+    row.querySelector('.row-num').textContent = `📄 第 ${i + 1} 張發票`;
+    // 第一張不應有移除鈕
+    const delBtn = row.querySelector('.del-btn');
+    if (i === 0 && delBtn) delBtn.remove();
+    if (i > 0 && !delBtn) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'del-btn';
+      b.textContent = '移除';
+      b.onclick = function() { removeInvoiceRow(b); };
+      row.insertBefore(b, row.firstChild.nextSibling);
+    }
+  });
+}
+
+function collectInvoices() {
+  return Array.from(document.querySelectorAll('.invoice-row')).map(row => ({
+    amount: row.querySelector('.buy-amount').value,
+    invoice: row.querySelector('.buy-invoice').value.trim(),
+    items: row.querySelector('.buy-items').value.trim()
+  })).filter(r => r.amount || r.invoice || r.items);  // 完全空白的不算
+}
+
+// ===== 特殊情形勾選框 =====
+function toggleSpecialBox() {
+  const checked = document.getElementById('special-situation').checked;
+  document.getElementById('special-box').style.display = checked ? 'block' : 'none';
+}
+
+// 特殊情形照片預覽（跟工程照片同邏輯）
+let specialPhotosData = [];
+document.getElementById('specialphotos').addEventListener('change', async e => {
+  const files = Array.from(e.target.files);
+  specialPhotosData = [];
+  const preview = document.getElementById('special-preview');
+  preview.innerHTML = '';
+  for (const file of files) {
+    const data = await compressImage(file, 1280, 0.8);
+    specialPhotosData.push(data);
+    const img = document.createElement('img');
+    img.src = data;
+    preview.appendChild(img);
+  }
+});
+
+// ===== 提交 =====
+async function submit(action) {
+  const employeeSel = document.getElementById('employee');
+  const siteSel = document.getElementById('site');
+
+  if (!employeeSel.value) return showToast('請選擇姓名', 'error');
+  if (!siteSel.value) return showToast('請選擇案場', 'error');
+  if (!selfieData) return showToast('請拍自拍照', 'error');
+
+  // 取得勾選的工序（複選）
+  const procedureChecks = document.querySelectorAll('#procedure-list input[type=checkbox]:checked');
+  const procedures = Array.from(procedureChecks).map(c => c.value);
+
+  // 下班必須選工序、上班不用
+  if (action === 'clockOut' && procedures.length === 0) {
+    return showToast('下班打卡請至少勾選一個工序', 'error');
+  }
+
+  const needMaterial = document.getElementById('need-material').checked;
+  const materialNote = document.getElementById('material-note').value.trim();
+  if (needMaterial && !materialNote) {
+    return showToast('請填寫需補充的材料內容', 'error');
+  }
+
+  const buyMaterial = document.getElementById('buy-material').checked;
+  let buyAmount = '', buyInvoice = '', buyItems = '';
+  if (buyMaterial) {
+    const invoices = collectInvoices();
+    if (invoices.length === 0) return showToast('請至少填一張發票', 'error');
+    // 每張發票必須有金額和品項
+    for (let i = 0; i < invoices.length; i++) {
+      const inv = invoices[i];
+      if (!inv.amount || Number(inv.amount) <= 0) {
+        return showToast(`第 ${i + 1} 張發票請填金額`, 'error');
+      }
+      if (!inv.items) {
+        return showToast(`第 ${i + 1} 張發票請填品項`, 'error');
+      }
+    }
+    // 組合：金額加總、發票與品項用「 | 」連接，品項後面附金額
+    buyAmount = invoices.reduce((s, x) => s + Number(x.amount), 0);
+    buyInvoice = invoices.map(x => x.invoice || '(無發票)').join(' | ');
+    buyItems = invoices.map(x => `${x.items} ($${Number(x.amount).toLocaleString()})`).join(' | ');
+  }
+
+  const specialSituation = document.getElementById('special-situation').checked;
+  const specialNote = document.getElementById('special-note').value.trim();
+  if (specialSituation && specialPhotosData.length === 0 && !specialNote) {
+    return showToast('特殊情形請至少上傳一張照片或填寫說明', 'error');
+  }
+
+  const buttons = document.querySelectorAll('button');
+  buttons.forEach(b => b.disabled = true);
+  const targetBtn = action === 'clockIn' ? document.querySelector('.btn-in') : document.querySelector('.btn-out');
+  const originalText = targetBtn.textContent;
+  targetBtn.innerHTML = '<span class="spinner"></span>上傳中...';
+
+  try {
+    const payload = {
+      action,
+      employeeId: employeeSel.value,
+      employeeName: employeeSel.selectedOptions[0].dataset.name,
+      site: siteSel.selectedOptions[0].dataset.name,
+      procedures: procedures,         // 工序：陣列（下班才送）
+      selfie: selfieData,
+      workPhotos: action === 'clockOut' ? workPhotosData : [],
+      gps: gpsData,
+      note: document.getElementById('note').value,
+      needMaterial: needMaterial,
+      materialNote: materialNote,
+      buyMaterial: buyMaterial,
+      buyAmount: buyAmount,
+      buyInvoice: buyInvoice,
+      buyItems: buyItems,
+      specialSituation: specialSituation,
+      specialNote: specialNote,
+      specialPhotos: specialSituation ? specialPhotosData : []
+    };
+
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    showToast('✓ ' + data.message, 'success');
+    // 重置部分欄位
+    selfieData = null;
+    workPhotosData = [];
+    document.getElementById('selfie-preview').innerHTML = '';
+    document.getElementById('work-preview').innerHTML = '';
+    document.getElementById('selfie-label').textContent = '點此拍照';
+    document.getElementById('note').value = '';
+    document.getElementById('need-material').checked = false;
+    document.getElementById('material-note').value = '';
+    document.getElementById('material-note').style.display = 'none';
+    document.getElementById('buy-material').checked = false;
+    document.getElementById('invoice-list').innerHTML = '';
+    document.getElementById('buy-box').style.display = 'none';
+    // 重置特殊情形
+    specialPhotosData = [];
+    document.getElementById('special-situation').checked = false;
+    document.getElementById('special-note').value = '';
+    document.getElementById('specialphotos').value = '';
+    document.getElementById('special-preview').innerHTML = '';
+    document.getElementById('special-box').style.display = 'none';
+    // 重置工序勾選
+    document.querySelectorAll('#procedure-list input[type=checkbox]').forEach(c => {
+      c.checked = false;
+      c.parentElement.classList.remove('checked');
+    });
+  } catch (err) {
+    showToast('失敗: ' + err.message, 'error');
+  } finally {
+    buttons.forEach(b => b.disabled = false);
+    targetBtn.textContent = originalText;
+    // 重新檢查狀態（打完上班卡後，自動鎖成只能打下班）
+    checkClockStatus();
+  }
+}
+
+// ===== 器材位置 / 搬移 =====
+let eqConfigData = { equipment: [], locations: [], extraOperators: [], extraLocations: [] };
+
+// 「啟用」欄容錯：是 / 啟用 / TRUE 都算啟用（相容手動填的值）
+function eqEnabled(v) {
+  const s = String(v == null ? '' : v).trim();
+  return s === '是' || s === '啟用' || s.toUpperCase() === 'TRUE';
+}
+
+// 器材可用的所有地點 = 案場 + 器材選項裡的額外地點（例：公司）
+function allEqSites() {
+  const cfg = window.APP_CONFIG || { sites: [] };
+  const siteNames = (cfg.sites || []).map(s => s.name);
+  return siteNames.concat(eqConfigData.extraLocations || []);
+}
+
+async function openEquipmentModal() {
+  const cfg = window.APP_CONFIG;
+  if (!cfg) return showToast('資料尚未載入，請稍候再試', 'error');
+  document.getElementById('eq-move-list').innerHTML =
+    '<div style="color:#999;font-size:13px;padding:8px">載入中...</div>';
+  document.getElementById('eq-modal').style.display = 'flex';
+  await reloadEquipment();
+}
+
+function closeEquipmentModal() {
+  document.getElementById('eq-modal').style.display = 'none';
+}
+
+// 抓最新器材配置（含額外操作人/地點），重建所有下拉 + 位置清單
+async function reloadEquipment() {
+  try {
+    const res = await fetch(API_URL + '?action=equipmentConfig');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || '載入失敗');
+    eqConfigData = {
+      equipment: data.equipment || [],
+      locations: data.locations || [],
+      extraOperators: data.extraOperators || [],
+      extraLocations: data.extraLocations || []
+    };
+  } catch (err) {
+    document.getElementById('eq-move-list').innerHTML =
+      '<div style="color:#dc2626;padding:8px">器材載入失敗：' + escapeHtml(err.message) + '</div>';
+    return;
+  }
+  buildOperatorSelect();
+  buildAddSiteSelect();
+  buildAddEquipSelect();
+  renderMoveList();
+}
+
+// 操作人下拉：員工（只顯示代號）＋ 器材選項裡的額外人員（顯示名稱）
+function buildOperatorSelect() {
+  const cfg = window.APP_CONFIG || { employees: [] };
+  const sel = document.getElementById('eq-employee');
+  const prev = sel.value;
+  let html = '<option value="">-- 請選擇 --</option>';
+  (cfg.employees || []).forEach(e => {
+    html += `<option value="${escapeHtml(e.id)}" data-name="${escapeHtml(e.name)}">${escapeHtml(e.id)}</option>`;
+  });
+  (eqConfigData.extraOperators || []).forEach(n => {
+    html += `<option value="${escapeHtml(n)}" data-name="${escapeHtml(n)}">${escapeHtml(n)}</option>`;
+  });
+  sel.innerHTML = html;
+  const mainEmp = document.getElementById('employee');
+  if (prev) sel.value = prev;
+  else if (mainEmp && mainEmp.value) sel.value = mainEmp.value;
+}
+
+// 補登區「案場」下拉：案場 ＋ 額外地點
+function buildAddSiteSelect() {
+  const sel = document.getElementById('eq-add-site');
+  sel.innerHTML = '<option value="">案場</option>' +
+    allEqSites().map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+}
+
+// 補登區「器材」下拉（只列啟用中的）
+function buildAddEquipSelect() {
+  const sel = document.getElementById('eq-add-eq');
+  const activeEq = eqConfigData.equipment.filter(e => eqEnabled(e['啟用']));
+  sel.innerHTML = '<option value="">器材</option>' +
+    activeEq.map(e => `<option value="${escapeHtml(e['器材ID'])}">${escapeHtml(String(e['名稱'] || ''))}</option>`).join('');
+}
+
+// 目前位置清單：每個「器材×地點、數量>0」一列，可搬到別的地點
+function renderMoveList() {
+  const wrap = document.getElementById('eq-move-list');
+  const nameMap = {}, enabledMap = {};
+  eqConfigData.equipment.forEach(e => {
+    nameMap[e['器材ID']] = e['名稱'];
+    enabledMap[e['器材ID']] = eqEnabled(e['啟用']);
+  });
+
+  const placements = eqConfigData.locations
+    .filter(l => (Number(l['數量']) || 0) > 0 && enabledMap[l['器材ID']] !== false)
+    .sort((a, b) => String(nameMap[a['器材ID']] || '').localeCompare(String(nameMap[b['器材ID']] || '')));
+
+  if (!placements.length) {
+    wrap.innerHTML = '<div style="color:#999;font-size:13px;padding:8px">目前沒有任何配置。請用上方「設定 / 補登數量」先把器材放到地點。</div>';
+    return;
+  }
+
+  const allSites = allEqSites();
+
+  wrap.innerHTML = placements.map(l => {
+    const eqId = l['器材ID'];
+    const from = String(l['案場']);
+    const qty = Number(l['數量']) || 0;
+    const nm = nameMap[eqId] || eqId;
+    const opts = allSites.filter(s => s !== from)
+      .map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+    return `<div class="eqmv-row" data-eqid="${escapeHtml(eqId)}" data-from="${escapeHtml(from)}" data-qty="${qty}">
+      <div class="eqmv-info">${escapeHtml(String(nm))} <span class="loc">📍${escapeHtml(from)}</span><span class="qty">${qty} 台/顆</span></div>
+      <div class="eqmv-ctrl">
+        <select class="eqmv-to"><option value="">搬到…</option>${opts}</select>
+        <input class="eqmv-n" type="number" min="1" max="${qty}" value="${qty}">
+        <button type="button" onclick="moveRow(this)">搬移</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// 補登：把某器材在某地點的數量「直接設為」輸入值（絕對值）
+async function setConfigQty() {
+  const empSel = document.getElementById('eq-employee');
+  if (!empSel.value) return showToast('請先選操作人', 'error');
+  const eqId = document.getElementById('eq-add-eq').value;
+  const site = document.getElementById('eq-add-site').value;
+  const qty = Number(document.getElementById('eq-add-qty').value);
+  if (!eqId) return showToast('請選器材', 'error');
+  if (!site) return showToast('請選地點', 'error');
+  if (isNaN(qty) || qty < 0) return showToast('數量需為 0 或正整數', 'error');
+
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'updateEquipmentLocation',
+      site: site,
+      updater: empSel.selectedOptions[0].dataset.name,
+      source: '前台',
+      updates: [{ eqId: eqId, qty: qty }]
+    })
+  }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+
+  if (!res.ok) return showToast('失敗: ' + (res.error || ''), 'error');
+  showToast('✓ 已設定', 'success');
+  document.getElementById('eq-add-qty').value = '0';
+  await reloadEquipment();
+}
+
+// 搬移：從來源地點搬 N 到目的地點（後端原子處理）
+async function moveRow(btn) {
+  const empSel = document.getElementById('eq-employee');
+  if (!empSel.value) return showToast('請先選操作人', 'error');
+
+  const row = btn.closest('.eqmv-row');
+  const eqId = row.dataset.eqid;
+  const fromSite = row.dataset.from;
+  const maxQty = Number(row.dataset.qty) || 0;
+  const toSite = row.querySelector('.eqmv-to').value;
+  const n = Number(row.querySelector('.eqmv-n').value) || 0;
+
+  if (!toSite) return showToast('請選要搬到哪裡', 'error');
+  if (n <= 0) return showToast('搬移數量需大於 0', 'error');
+  if (n > maxQty) return showToast(`最多只能搬 ${maxQty}`, 'error');
+
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'moveEquipment',
+        eqId: eqId, fromSite: fromSite, toSite: toSite, qty: n,
+        updater: empSel.selectedOptions[0].dataset.name
+      })
+    }).then(r => r.json());
+    if (!res.ok) throw new Error(res.error || '搬移失敗');
+    showToast('✓ 已搬移', 'success');
+    await reloadEquipment();
+  } catch (err) {
+    showToast('失敗: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
